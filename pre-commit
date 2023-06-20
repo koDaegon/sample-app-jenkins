@@ -1,20 +1,25 @@
 #!/bin/sh
 
-# Declare an empty array
-declare -a status
+# Define Color
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
 
+secrets_status=0
 
 echo "********************************************************************"
-echo "Linting Dockerfile"
+echo "${YELLOW}Testing secrets analysis before commit${NC}"
 echo "********************************************************************"
 
-docker run --rm -i hadolint/hadolint < Dockerfile
-status[0]=$?
+# Find all the secrets in the repository
+git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline
+secrets_status=$?
 
-
-# Check the exit status of each command
-for s in "${status[@]}"; do
-  if [ $s -ne 0 ]; then
+# Check status before commit
+if [ $secrets_status -ne 0 ]; then
+    echo "${RED}Some secrets were detected. Please remove them before committing.${NC}"
     exit 1
-  fi
-done
+else
+    echo "${GREEN}No secrets detected. Proceeding with commit.${NC}"
+fi
